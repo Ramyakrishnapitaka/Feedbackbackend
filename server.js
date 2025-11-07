@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 require("dotenv").config();
+app.use(cors({ origin: "https://fullstackfeedbackapplication.onrender.com" }));
+
 
 const User = require("./usermodel");
 const Feedback = require("./feedbackmodel");
