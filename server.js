@@ -8,28 +8,28 @@ const User = require("./usermodel");
 const Feedback = require("./feedbackmodel");
 
 const app = express();
+
 const allowedOrigins = [
-  "http://localhost:5175", 
-  "https://fullstackfeedbackapplication.onrender.com" 
+  "http://localhost:5175",
+  "https://fullstackfeedbackapplication.onrender.com"
+];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // allow requests with no origin (like Postman)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
-      return callback(new Error(msg), false);
+    if (!allowedOrigins.includes(origin)) {
+      return callback(new Error("CORS not allowed"), false);
     }
     return callback(null, true);
-  },
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  }
 }));
 
 app.use(express.json());
+
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.error("MongoDB connection failed:", err));
+  .then(() => console.log("MongoDB Connected"))
+  .catch(err => console.log("MongoDB connection failed:", err));
+
 app.post("/api/signup", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -40,12 +40,13 @@ app.post("/api/signup", async (req, res) => {
     const newUser = new User({ name, email, password: hashedPassword, role });
     await newUser.save();
 
-    res.status(201).json({ message: "Signup successful!", user: { _id: newUser._id, name, email, role } });
+    res.status(201).json({ message: "Signup successful!", user: { name, email, role, _id: newUser._id } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error during signup" });
   }
 });
+
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -55,12 +56,13 @@ app.post("/api/login", async (req, res) => {
     const validPass = await bcrypt.compare(password, user.password);
     if (!validPass) return res.status(400).json({ message: "Invalid password" });
 
-    res.status(200).json({ message: "Login successful!", user: { _id: user._id, name: user.name, email, role: user.role } });
+    res.status(200).json({ message: "Login successful!", user: { name: user.name, email, role: user.role, _id: user._id } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error during login" });
   }
 });
+
 app.post("/api/data", async (req, res) => {
   try {
     const { name, feedback, comment, userId } = req.body;
@@ -72,15 +74,17 @@ app.post("/api/data", async (req, res) => {
     res.status(500).json({ message: "Error saving feedback" });
   }
 });
+
 app.get("/api/data", async (req, res) => {
   try {
     const feedbacks = await Feedback.find().sort({ createdAt: -1 });
     res.json(feedbacks);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error fetching feedbacks" });
+    res.status(500).json({ message: "Error fetching feedback" });
   }
 });
+
 app.put("/api/data/:id", async (req, res) => {
   try {
     const fb = await Feedback.findById(req.params.id);
@@ -102,6 +106,7 @@ app.put("/api/data/:id", async (req, res) => {
     res.status(500).json({ message: "Error updating feedback" });
   }
 });
+
 app.delete("/api/data/:id", async (req, res) => {
   try {
     const fb = await Feedback.findById(req.params.id);
@@ -119,6 +124,7 @@ app.delete("/api/data/:id", async (req, res) => {
     res.status(500).json({ message: "Error deleting feedback" });
   }
 });
+
 app.put("/api/data/:id/reply", async (req, res) => {
   try {
     const fb = await Feedback.findById(req.params.id);
@@ -135,6 +141,8 @@ app.put("/api/data/:id/reply", async (req, res) => {
     res.status(500).json({ message: "Error saving reply" });
   }
 });
+
 const PORT = process.env.PORT || 4500;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
