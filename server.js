@@ -3,14 +3,14 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 require("dotenv").config();
-app.use(cors({ origin: "https://fullstackfeedbackapplication.onrender.com" }));
+
 
 
 const User = require("./usermodel");
 const Feedback = require("./feedbackmodel");
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: "https://fullstackfeedbackapplication.onrender.com" }));
 app.use(express.json());
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB Connected"))
