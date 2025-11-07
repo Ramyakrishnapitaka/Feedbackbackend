@@ -4,17 +4,32 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 require("dotenv").config();
 
-
-
 const User = require("./usermodel");
 const Feedback = require("./feedbackmodel");
 
 const app = express();
-app.use(cors({ origin: "https://fullstackfeedbackapplication.onrender.com" }));
+const allowedOrigins = [
+  "http://localhost:5175", 
+  "https://fullstackfeedbackapplication.onrender.com" 
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow requests with no origin (like Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log("MongoDB connection failed:", err));
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.error("MongoDB connection failed:", err));
 app.post("/api/signup", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -49,11 +64,8 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/data", async (req, res) => {
   try {
     const { name, feedback, comment, userId } = req.body;
-    if (!name || !feedback || !comment || !userId) return res.status(400).json({ message: "All fields are required" });
-
     const newFeedback = new Feedback({ name, feedback, comment, userId });
     await newFeedback.save();
-
     res.status(201).json({ message: "Feedback saved!", data: newFeedback });
   } catch (err) {
     console.error(err);
@@ -66,19 +78,22 @@ app.get("/api/data", async (req, res) => {
     res.json(feedbacks);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error fetching feedback" });
+    res.status(500).json({ message: "Error fetching feedbacks" });
   }
 });
-
 app.put("/api/data/:id", async (req, res) => {
   try {
     const fb = await Feedback.findById(req.params.id);
     if (!fb) return res.status(404).json({ message: "Feedback not found" });
 
-    if (fb.userId.toString() !== req.body.userId) return res.status(403).json({ message: "You can only edit your own feedback" });
+    if (fb.userId.toString() !== req.body.userId) {
+      return res.status(403).json({ message: "You can only edit your own feedback" });
+    }
 
     const { name, feedback, comment } = req.body;
-    fb.name = name; fb.feedback = feedback; fb.comment = comment;
+    fb.name = name;
+    fb.feedback = feedback;
+    fb.comment = comment;
     await fb.save();
 
     res.json({ message: "Feedback updated!", data: fb });
@@ -87,14 +102,12 @@ app.put("/api/data/:id", async (req, res) => {
     res.status(500).json({ message: "Error updating feedback" });
   }
 });
-
 app.delete("/api/data/:id", async (req, res) => {
   try {
     const fb = await Feedback.findById(req.params.id);
     if (!fb) return res.status(404).json({ message: "Feedback not found" });
 
     const user = await User.findById(req.body.userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
     if (user.role !== "admin" && fb.userId.toString() !== req.body.userId) {
       return res.status(403).json({ message: "You can't delete this feedback" });
     }
@@ -112,7 +125,7 @@ app.put("/api/data/:id/reply", async (req, res) => {
     if (!fb) return res.status(404).json({ message: "Feedback not found" });
 
     const user = await User.findById(req.body.userId);
-    if (!user || user.role !== "admin") return res.status(403).json({ message: "Only admin can reply" });
+    if (user.role !== "admin") return res.status(403).json({ message: "Only admin can reply" });
 
     fb.reply = req.body.reply;
     await fb.save();
@@ -122,6 +135,6 @@ app.put("/api/data/:id/reply", async (req, res) => {
     res.status(500).json({ message: "Error saving reply" });
   }
 });
-
 const PORT = process.env.PORT || 4500;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
